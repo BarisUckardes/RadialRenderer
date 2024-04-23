@@ -20,6 +20,7 @@ namespace Tespia.Core.Rendering.Shaders
         {
             mat4 Mvp;
         };
+       
         void main()
         {
             gl_Position = Mvp*vec4(Position,0,1);
@@ -32,15 +33,14 @@ namespace Tespia.Core.Rendering.Shaders
 
         layout(location = 0) in vec2 Uv;
    
-        layout(location = 0) out vec4 ColorOUt;
-
+        layout(location = 0) out vec4 ColorOut;
 
         layout(set = 1,binding = 0) uniform sampler SpriteSampler;
         layout(set = 2,binding = 0) uniform texture2D SpriteTexture;
 
         void main()
         {
-            ColorOUt = texture(sampler2D(SpriteTexture,SpriteSampler),Uv);
+            ColorOut = texture(sampler2D(SpriteTexture,SpriteSampler),Uv);
         }
     ";
 

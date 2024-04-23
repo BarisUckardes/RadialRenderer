@@ -15,7 +15,7 @@ namespace Runtime.Rendering
         private struct PipelineStateCache
         {
             public GraphicsPipelineDescription Desc;
-            public List<ResourceLayout> Layouts;
+            public ShaderGroup ShaderGroup;
             public Pipeline Pipeline;
         }
 
@@ -50,7 +50,7 @@ namespace Runtime.Rendering
             PipelineStateCache defaultCache = new PipelineStateCache()
             {
                 Pipeline = null,
-                Layouts = new List<ResourceLayout>(100),
+                ShaderGroup = new ShaderGroup(null,null),
                 Desc = new GraphicsPipelineDescription()
                 {
                     BlendState = BlendStateDescription.SingleOverrideBlend,
@@ -125,7 +125,7 @@ namespace Runtime.Rendering
             PipelineStateCache defaultCache = new PipelineStateCache()
             {
                 Pipeline = null,
-                Layouts = new List<ResourceLayout>(100),
+                ShaderGroup = new ShaderGroup(null, null),
                 Desc = new GraphicsPipelineDescription()
                 {
                     BlendState = BlendStateDescription.SingleAlphaBlend,
@@ -181,6 +181,7 @@ namespace Runtime.Rendering
             _cmdList = _device.ResourceFactory.CreateCommandList();
             _fence = _device.ResourceFactory.CreateFence(false);
             _pipelineCache = new List<PipelineStateCache>(1000);
+            _resourceSetCache = new Dictionary<BindableResource, ResourceSet>(1000);
         }
 
         private Veldrid.GraphicsDevice _device;

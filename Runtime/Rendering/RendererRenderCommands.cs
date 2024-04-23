@@ -79,18 +79,17 @@ namespace Runtime.Rendering
         }
      
         //Shaders
-        public static void SetShaders(Shader[] shaders, ResourceLayout[] layouts)
+        public static void SetGraphicsShaderGroup(ShaderGroup group)
         {
             if(Instance._currentPipelineCache.Desc.ShaderSet.Shaders == null)
             {
                 Instance._currentPipelineCache.Desc.ShaderSet.Shaders = new Shader[2];
             }
 
-            Instance._currentPipelineCache.Desc.ShaderSet.Shaders = shaders;
+            Instance._currentPipelineCache.Desc.ShaderSet.Shaders = group.Shaders;
 
-            Instance._currentPipelineCache.Layouts.Clear();
-            Instance._currentPipelineCache.Layouts.AddRange(layouts);
-            Instance._currentPipelineCache.Desc.ResourceLayouts = layouts;
+            Instance._currentPipelineCache.ShaderGroup = group;
+            Instance._currentPipelineCache.Desc.ResourceLayouts = group.Layouts;
 
             MarkPipelineDirty();
         }
@@ -331,6 +330,26 @@ namespace Runtime.Rendering
 
             Instance._cmdList.SetGraphicsResourceSet(index, resourceSet);
         }
+        public static void SetGraphicsResource(string name,BindableResource resource)
+        {
+            //Get and check resource slot index
+            int resourceSlotIndex = Instance._currentPipelineCache.ShaderGroup.Resources.IndexOf(name);
+            if (resourceSlotIndex == -1)
+                throw new Exception("Invalid shader group");
+
+            //Invalidate the pipeline
+            InvalidateAndPlacePipeline();
+
+            //Check for the resource set
+            ResourceSet resourceSet = null;
+            if(!Instance._resourceSetCache.TryGetValue(resource, out resourceSet)) // found resource set
+            {
+                resourceSet = Renderer.CreateResourceSet(resource, Instance._currentPipelineCache.ShaderGroup.Layouts[resourceSlotIndex]);
+                Instance._resourceSetCache.Add(resource, resourceSet);
+            }
+
+            Instance._cmdList.SetGraphicsResourceSet((uint)resourceSlotIndex, resourceSet);
+        }
         public static void DrawInstanced(uint indexCount,uint instanceCount,uint indexOffset,int vertexOffset,uint instanceOffset)
         {
             //Invalidate the pipeline
@@ -342,6 +361,14 @@ namespace Runtime.Rendering
         public static void SetViewport(uint index,in Viewport viewport)
         {
             Instance._cmdList.SetViewport(index, viewport);
+        }
+        public static void ClearCachedResourceSets()
+        {
+
+        }
+        public static void ClearCachedPipelines()
+        {
+
         }
         private static void InvalidateAndPlacePipeline()
         {
@@ -391,21 +418,13 @@ namespace Runtime.Rendering
                     continue;
                 }
 
-                //Check resource layouts
-                if (!CheckResourceLayouts(Instance._currentPipelineCache.Layouts, other.Layouts))
+                //Check shader group
+                if (!CheckShaderGroup(Instance._currentPipelineCache.ShaderGroup, other.ShaderGroup))
                 {
                     continue;
                 }
 
                 //Check shader set
-                if (Instance._currentPipelineCache.Desc.ShaderSet.Shaders[0] != other.Desc.ShaderSet.Shaders[0])
-                {
-                    continue;
-                }
-                if (Instance._currentPipelineCache.Desc.ShaderSet.Shaders[1] != other.Desc.ShaderSet.Shaders[1])
-                {
-                    continue;
-                }
                 if (!CheckVertexLayout(Instance._currentPipelineCache.Desc.ShaderSet.VertexLayouts[0], other.Desc.ShaderSet.VertexLayouts[0]))
                 {
                     continue;
@@ -419,11 +438,10 @@ namespace Runtime.Rendering
             //Generate new pipeline if failed to find new one
             if(foundMatchCache == null)
             {
-                Console.WriteLine("Generating new graphics pipeline...");
                 foundMatchCache = new PipelineStateCache()
                 {
                     Desc = Instance._currentPipelineCache.Desc,
-                    Layouts = new List<ResourceLayout>(10),
+                    ShaderGroup = Instance._currentPipelineCache.ShaderGroup,
                     Pipeline = GenerateCurrentPipeline()
                 };
 
@@ -544,14 +562,16 @@ namespace Runtime.Rendering
 
             return true;
         }
-        private static bool CheckResourceLayouts(List<ResourceLayout> a,List<ResourceLayout> b)
+        private static bool CheckShaderGroup(ShaderGroup a,ShaderGroup b)
         {
-            if (a.Count != b.Count)
+            if (a.Shaders.Length != b.Shaders.Length)
+                return false;
+            if (a.Layouts.Length != b.Layouts.Length)
                 return false;
 
-            for (int i = 0; i < a.Count; i++)
+            for (int i = 0; i < a.Layouts.Length; i++)
             {
-                if (a[i] != b[i])
+                if (a.Layouts[i] != b.Layouts[i])
                     return false;
             }
 
@@ -574,5 +594,6 @@ namespace Runtime.Rendering
         private bool _pipelineDirty = true;
         private bool _pipelineActive = false;
         private PipelineStateCache _currentPipelineCache;
+        private Dictionary<BindableResource, ResourceSet> _resourceSetCache;
     }
 }

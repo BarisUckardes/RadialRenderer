@@ -59,25 +59,34 @@ namespace Runtime.Rendering
         {
             return Instance._device.ResourceFactory.CreateComputePipeline(desc);
         }
-        public static Shader[] CompileVertexFragmentShader(string vertexSource,string fragmentSource)
+        public static ShaderGroup CompileVertexFragmentShader(string vertexSource,string fragmentSource)
         {
+            VertexFragmentCompilationResult spirvReflectionResult = Veldrid.SPIRV.SpirvCompilation.CompileVertexFragment(Encoding.UTF8.GetBytes(vertexSource), Encoding.UTF8.GetBytes(fragmentSource),CrossCompileTarget.GLSL);
+
+            SpirvCompilationResult vertexShaderResult = Veldrid.SPIRV.SpirvCompilation.CompileGlslToSpirv(vertexSource, "main", ShaderStages.Vertex, new GlslCompileOptions());
+            SpirvCompilationResult fragmentShaderResult = Veldrid.SPIRV.SpirvCompilation.CompileGlslToSpirv(fragmentSource, "main", ShaderStages.Fragment, new GlslCompileOptions());
+
             ShaderDescription vertexDesc = new ShaderDescription()
             {
                 Debug = false,
                 EntryPoint = "main",
-                ShaderBytes = Encoding.UTF8.GetBytes(vertexSource),
+                ShaderBytes = vertexShaderResult.SpirvBytes,
                 Stage = ShaderStages.Vertex
             };
             ShaderDescription fragmentDesc = new ShaderDescription()
             {
                 Debug = false,
                 EntryPoint = "main",
-                ShaderBytes = Encoding.UTF8.GetBytes(fragmentSource),
+                ShaderBytes = fragmentShaderResult.SpirvBytes,
                 Stage = ShaderStages.Fragment
             };
 
+            Shader vertexShader = Instance._device.ResourceFactory.CreateShader(vertexDesc);
+            Shader fragmentShader = Instance._device.ResourceFactory.CreateShader(fragmentDesc);
 
-            return Instance._device.ResourceFactory.CreateFromSpirv(vertexDesc, fragmentDesc);
+            ShaderGroup group = new ShaderGroup(new[] {vertexShader,fragmentShader},spirvReflectionResult.Reflection.ResourceLayouts);
+
+            return group;
         }
         
     

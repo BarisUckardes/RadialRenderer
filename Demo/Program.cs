@@ -31,7 +31,7 @@ namespace Demo
 
             //Create 2D scene
             Veldrid.Texture texture0 = GraphicsUtils.LoadTexture("D:\\Resources\\Textures\\SceneAspectIcon.png");
-            Veldrid.Shader[] shaderSet = Renderer.CompileVertexFragmentShader(BatchlessSpriteShader.VertexShader,BatchlessSpriteShader.FragmentShader);
+            ShaderGroup shaderGroup = Renderer.CompileVertexFragmentShader(BatchlessSpriteShader.VertexShader,BatchlessSpriteShader.FragmentShader);
             ReadOnlySpan<VertexData> vertexes = stackalloc VertexData[4]
             {
                 new VertexData()
@@ -97,48 +97,7 @@ namespace Demo
                 MaximumLod = 0,
                 MinimumLod = 0
             });
-            Veldrid.ResourceLayout mvpResourceLayout = Renderer.CreateResourceLayout(new Veldrid.ResourceLayoutDescription()
-            {
-                Elements = new[]
-                {
-                    new Veldrid.ResourceLayoutElementDescription()
-                    {
-                        Kind = Veldrid.ResourceKind.UniformBuffer,
-                        Name = "MvpBuffer",
-                        Options = Veldrid.ResourceLayoutElementOptions.None,
-                        Stages = Veldrid.ShaderStages.Vertex
-                    }
-                }
-            });
-            Veldrid.ResourceLayout samplerResourceLayout = Renderer.CreateResourceLayout(new Veldrid.ResourceLayoutDescription()
-            {
-                Elements = new[]
-               {
-                    new Veldrid.ResourceLayoutElementDescription()
-                    {
-                        Kind = Veldrid.ResourceKind.Sampler,
-                        Name = "SpriteSampler",
-                        Options = Veldrid.ResourceLayoutElementOptions.None,
-                        Stages = Veldrid.ShaderStages.Fragment
-                    }
-                }
-            });
-            Veldrid.ResourceLayout textureResourceLayout = Renderer.CreateResourceLayout(new Veldrid.ResourceLayoutDescription()
-            {
-                Elements = new[]
-               {
-                    new Veldrid.ResourceLayoutElementDescription()
-                    {
-                        Kind = Veldrid.ResourceKind.TextureReadOnly,
-                        Name = "SpriteTexture",
-                        Options = Veldrid.ResourceLayoutElementOptions.None,
-                        Stages = Veldrid.ShaderStages.Fragment
-                    }
-                }
-            });
-            Veldrid.ResourceSet mvpBufferResourceSet = Renderer.CreateResourceSet(mvpBuffer, mvpResourceLayout);
-            Veldrid.ResourceSet samplerResourceSet = Renderer.CreateResourceSet(sampler, samplerResourceLayout);
-            Veldrid.ResourceSet textureResourceSet = Renderer.CreateResourceSet(texture0, textureResourceLayout);
+         
             Veldrid.VertexLayoutDescription vertexLayout = new Veldrid.VertexLayoutDescription()
             {
                 Elements = new Veldrid.VertexElementDescription[]
@@ -162,8 +121,15 @@ namespace Demo
                 Stride = 16
             };
 
+            Veldrid.DeviceBuffer colorBuffer = Renderer.AllocateBuffer(new Veldrid.BufferDescription()
+            {
+                RawBuffer = false,
+                SizeInBytes = 16,
+                StructureByteStride = 0,
+                Usage = Veldrid.BufferUsage.UniformBuffer
+            });
+
             //Demo loop
-            bool bSwitch = false;
             while (window.IsAlive)
             {
                 //Poll events
@@ -175,17 +141,14 @@ namespace Demo
 
                 Renderer.SetVertexLayout(vertexLayout);
 
-                Renderer.SetShaders(shaderSet, new Veldrid.ResourceLayout[]
-                {
-                    mvpResourceLayout,
-                    samplerResourceLayout,
-                    textureResourceLayout
-                });
-                Renderer.SetShaderResource(0, mvpBufferResourceSet);
-                Renderer.SetShaderResource(1,samplerResourceSet);
-                Renderer.SetShaderResource(2, textureResourceSet);
-                Renderer.SetFaceCullMode(bSwitch ? Veldrid.FaceCullMode.Front : Veldrid.FaceCullMode.Back);
-                bSwitch = !bSwitch;
+                Renderer.UpdateBuffer(mvpBuffer, Matrix4x4.CreateTranslation(new Vector3(0,0,0)), 0);
+                Renderer.UpdateBuffer(colorBuffer, new Vector3(1, 0, 0), 0);
+                Renderer.SetGraphicsShaderGroup(shaderGroup);
+                Renderer.SetGraphicsResource("TransformBuffer", mvpBuffer);
+                Renderer.SetGraphicsResource("SpriteSampler", sampler);
+                Renderer.SetGraphicsResource("SpriteTexture", texture0);
+
+                Renderer.SetFaceCullMode(Veldrid.FaceCullMode.Front);
                 Renderer.SetFramebuffer(Renderer.SwapchainFramebuffer);
                 Renderer.ClearColor(0, Veldrid.RgbaFloat.CornflowerBlue);
                 Renderer.SetViewport(0, new Veldrid.Viewport()
